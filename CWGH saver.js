@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         CWGH saver
 // @namespace    https://github.com/Acedia431/CWGH-saver
-// @version      0.3.0
+// @version      0.3.1
 // @description  Saves solutions and conditions of problems from Codewars to a GitHub repository
 // @author       Acedia431
 // @match        https://www.codewars.com/kata/*
@@ -169,11 +169,11 @@
             await updateFile(
                 readmePath,
                 `# ${data.title}
-                **Kyu:** ${data.kyu}
-                **Description:**
-                ${utils.stripHtml(data.description)}
-                **Tags:** ${data.tags.join(', ')}
-                [Original problem](${data.link})`
+                \n\n**Kyu:** ${data.kyu}
+                \n\n**Description:**
+                \n\n${utils.stripHtml(data.description)}
+                \n\n**Tags:** ${data.tags.join(', ')}
+                \n\n[Original problem](${data.link})`
             );
         }
 
