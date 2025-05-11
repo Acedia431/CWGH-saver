@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         CWGH saver
 // @namespace    https://github.com/Acedia431/CWGH-saver
-// @version      0.3.1
+// @version      0.3.2
 // @description  Saves solutions and conditions of problems from Codewars to a GitHub repository
 // @author       Acedia431
 // @match        https://www.codewars.com/kata/*
@@ -152,7 +152,7 @@
 
             const updateFile = async (path, content) => {
                 const status = await getFileStatus(path);
-                const message = `${status.exists ? "Update" : "Add"} file for ${data.title}`;
+                const message = `${status.exists ? "Update" : "Add"} ${path === solutionPath ? "solution" : "README"} for ${data.title}`;
 
                 await githubApiRequest(
                     `PUT /repos/${Config.REPO_OWNER}/${Config.REPO_NAME}/contents/${encodeURIComponent(path)}`,
@@ -221,6 +221,7 @@
 
     // === MAIN MODULE ===
     const Main = ((github, getData) => {
+
         function createSaveButton() {
             const button = document.createElement("button");
             button.id = "github-save-btn";
@@ -231,133 +232,91 @@
             return button;
         }
 
-        function addButtonNear(element) {
-            if (document.querySelector("#github-save-btn")) {
-                return;
-            }
-            const button = createSaveButton();
-            element.parentNode.insertBefore(button, element.nextSibling);
-        }
-
         async function addSaveButton() {
             if (document.querySelector('#github-save-btn')) {
                 return;
             }
-            let targetElement = null;
-            const possibleToolbars = [
-                ".list-item-solutions",
-                ".flex.flex-row.items-center",
-                ".flex.items-center.gap-2",
-                ".mt-4.flex.items-center",
-                ".flex.items-center",
-                ".actions"
-            ];
-            for (const selector of possibleToolbars) {
-                targetElement = document.querySelector(selector);
-                if (targetElement) break;
+
+            const targetElement = document.querySelector(".w-full.mt-4.flex.flex-row.flex-nowrap.items-center.justify-between");
+            targetElement.appendChild(createSaveButton());
+        }
+
+        async function handleSaveClick() {
+            const button = this;
+            button.disabled = true;
+            button.style.backgroundColor = "#7c9a44";
+            button.style.borderColor = "#7c9a44";
+            button.textContent = "Saving...";
+
+            try {
+                const problemData = getData.getProblemData();
+                problemData.solution = await getData.getSolution();
+
+                if (!problemData.solution) {
+                    throw new Error("No solution code found in editor");
+                }
+
+                await github.commitToGitHub(problemData);
+                button.textContent = "Saved!";
+            } catch (error) {
+                console.error("Save error:", error);
+                button.textContent = "Error!";
+                button.style.backgroundColor = "#bb432c";
+                button.style.borderColor = "#bb432c";
+                alert(`Save failed: ${error.message}`);
+            } finally {
+                setTimeout(() => {
+                    button.textContent = "Save to GitHub";
+                    button.style.backgroundColor = "#6795de";
+                    button.style.borderColor = "#6795de";
+                    button.disabled = false;
+                }, 3000);
             }
-            if (!targetElement) {
-                const submitButtons = [
-                    ".submit-btn",
-                    ".ml-2",
-                    'button[type="submit"]',
-                    'button[data-cy="submit-code-btn"]'
-                ];
-                for (const selector of submitButtons) {
-                    targetElement = document.querySelector(selector);
-                    if (targetElement) {
-                        addButtonNear(targetElement);
-                        return;
+        }
+
+        function init() {
+            const tryAddButton = () => {
+                const isPageReady =
+                    document.querySelector(".ml-2.mb-3") ||
+                    document.querySelector(".markdown.prose.max-w-none.mb-8") ||
+                    document.querySelector(".CodeMirror");
+
+                if (isPageReady) {
+                    addSaveButton();
+                    if (observer) {
+                        observer.disconnect();
+                        return true;
                     }
                 }
-                return;
-            }
-            const button = createSaveButton();
-            targetElement.appendChild(button);
-        }
+                return false;
+            };
 
+            const observer = new MutationObserver(tryAddButton);
+            observer.observe(document.body, { childList: true, subtree: true });
 
-    async function handleSaveClick() {
-        const button = this;
-        button.disabled = true;
-        button.textContent = "Saving...";
-
-        try {
-            const problemData = getData.getProblemData();
-            problemData.solution = await getData.getSolution();
-
-            if (!problemData.solution) {
-                throw new Error("No solution code found in editor");
-            }
-
-            await github.commitToGitHub(problemData);
-            button.textContent = "Saved!";
-        } catch (error) {
-            console.error("Save error:", error);
-            button.textContent = "Error!";
-            alert(`Save failed: ${error.message}`);
-        } finally {
             setTimeout(() => {
-                button.textContent = "Save to GitHub";
-                button.disabled = false;
-            }, 3000);
+                if (observer) observer.disconnect();
+            }, 20000);
         }
-    }
 
-    function init() {
-        const tryAddButton = () => {
-            const isPageReady = document.querySelector('.inner-small-hex') ||
-            document.querySelector('.problem-statement') ||
-            document.querySelector('.CodeMirror');
-
-            let lastUrl = window.location.href;
-            const urlCheckInterval = setInterval(() => {
-                if (window.location.href !== lastUrl) {
-                    lastUrl = window.location.href;
-                    tryAddButton();
-                }
-            }, 500);
-
-            if (isPageReady) {
-                addSaveButton();
-                clearInterval(urlCheckInterval);
-                return true;
-            }
-            return false;
+        return {
+            init: init
         };
-
-        if (!tryAddButton()) {
-            const observer = new MutationObserver((mutations) => {
-                if (tryAddButton()) {
-                    observer.disconnect();
-                }
-            });
-
-            observer.observe(document.body, {
-                childList: true,
-                subtree: true
-            });
-
-            setTimeout(() => {
-                observer.disconnect();
-            }, 10000);
-        }
-
-        setTimeout(() => {
-            clearInterval(urlCheckInterval);
-        }, 30000);
-    }
-
-    return {
-        init: init
-    };
     })(GitHub, GetData);
 
-    if (document.readyState === 'complete') {
-        Main.init();
+    if (document.readyState === "complete") {
+        setTimeout(Main.init, 500);
     } else {
-        window.addEventListener('load', Main.init);
-        document.addEventListener('DOMContentLoaded', Main.init);
+        window.addEventListener("load", () => setTimeout(Main.init, 500));
     }
     setTimeout(Main.init, 1500);
+    const originalPushState = history.pushState;
+    history.pushState = function(...args) {
+        originalPushState.apply(this, args);
+        setTimeout(Main.init, 1000);
+    };
+
+    window.addEventListener("popstate", () => {
+    setTimeout(Main.init, 1000);
+    });
 })();
