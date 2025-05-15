@@ -8,7 +8,7 @@ Saves everything to the specified GitHub repository:
 
 ## How to use?
 
-1. Create a new Tampermonkey script and paste the contents of the file (CWGH saver.js)[CWGH saver.js] into it.
+1. Create a new Tampermonkey script and paste the contents of the file [CWGH saver.js](CWGH%20saver.js) into it.
 2. Go to Settings and fill in the required fields:
   - Personal Access Token (with repo permissions).
   - Username.
