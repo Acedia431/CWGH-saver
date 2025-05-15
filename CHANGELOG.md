@@ -2,6 +2,18 @@
 
 All notable changes to this project will be documented in this file.
 
+## [0.4.0]
+
+### Changed
+
+- Improved security – now all configuration is stored in Tampermonkey's local storage.
+
+### Added
+
+- Added a settings button.
+
+- Added a settings interface in CodeWars style.
+
 ## [0.3.2]
 
 ### Changed
